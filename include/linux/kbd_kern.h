@@ -129,6 +129,8 @@ struct console;
 
 void vt_set_leds_compute_shiftstate(void);
 
+extern void invert_screen_kbd(struct vc_data *vc);
+
 /* defkeymap.c */
 
 extern unsigned int keymap_count;
