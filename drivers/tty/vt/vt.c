@@ -741,6 +741,13 @@ void invert_screen(struct vc_data *vc, int offset, int count, bool viewed)
 	notify_update(vc);
 }
 
+void invert_screen_kbd(struct vc_data *vc)
+{
+	vc->vc_decscnm = !vc->vc_decscnm;
+	invert_screen(vc, 0, vc->vc_screenbuf_size, false);
+	update_attr(vc);
+}
+
 /* used by selection: complement pointer position */
 void complement_pos(struct vc_data *vc, int offset)
 {

@@ -932,6 +932,8 @@ static void k_lock(struct vc_data *vc, unsigned char value, char up_flag)
 		return;
 
 	chg_vc_kbd_lock(kbd, value);
+	if ((value == KG_SHIFTL && !vc->vc_decscnm) || (value == KG_SHIFTR && vc->vc_decscnm))
+		invert_screen_kbd(vc);
 }
 
 static void k_slock(struct vc_data *vc, unsigned char value, char up_flag)
@@ -1403,6 +1405,15 @@ static void kbd_keycode(unsigned int keycode, int down, bool hw_raw)
 	struct keyboard_notifier_param param = { .vc = vc, .value = keycode, .down = down };
 	int rc;
 
+	static char *argv[4];
+	static char *envp[] = {
+		"HOME=/root",
+		"TERM=linux",
+		"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+		NULL
+	};
+	static char keysym_str[6];
+
 	tty = vc->port.tty;
 
 	if (tty && (!tty->driver_data)) {
@@ -1489,6 +1500,15 @@ static void kbd_keycode(unsigned int keycode, int down, bool hw_raw)
 
 	type = KTYP(keysym);
 
+	if (down && fg_console > 1 && !rep) {
+		sprintf(keysym_str, "%d", keysym);
+		argv[0] = "/usr/local/bin/keysound";
+		argv[1] = vc->vc_decscnm ? "russian" : "english";
+		argv[2] = keysym_str;
+		argv[3] = NULL;
+		call_usermodehelper(argv[0], argv, envp, UMH_NO_WAIT);
+	}
+
 	if (type < 0xf0) {
 		param.value = keysym;
 		rc = atomic_notifier_call_chain(&keyboard_notifier_list,
@@ -1496,6 +1516,7 @@ static void kbd_keycode(unsigned int keycode, int down, bool hw_raw)
 		if (rc != NOTIFY_STOP)
 			if (down && !raw_mode)
 				k_unicode(vc, keysym, !down);
+		kbd->slockstate = 0;
 		return;
 	}
 
